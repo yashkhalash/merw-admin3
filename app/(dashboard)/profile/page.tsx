@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, ShieldCheck, KeyRound, LogOut, BadgeCheck } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -9,16 +9,36 @@ import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Tabs from "@/components/ui/Tabs";
+import Modal from "@/components/ui/Modal";
+import LogoUpload from "@/components/ui/LogoUpload";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
+import { useSiteConfig } from "@/providers/SiteConfigProvider";
 
 function OverviewTab() {
   const { user } = useAuth();
+  const { logoUrl, updateSiteConfig } = useSiteConfig();
+  const { toast } = useToast();
+  const [logo, setLogo] = useState(logoUrl);
+  const [saving, setSaving] = useState(false);
 
   const infoRows = [
     { label: "Full name", value: user?.name || "Admin User" },
     { label: "Email address", value: user?.email || "admin@merw.com" },
     { label: "Role", value: user?.role || "admin" },
   ];
+
+  async function handleSaveLogo() {
+    setSaving(true);
+    try {
+      await updateSiteConfig({ logoUrl: logo });
+      toast({ title: "Logo updated", description: "The site logo has been updated.", variant: "success" });
+    } catch {
+      toast({ title: "Update failed", description: "Couldn't update the logo. Please try again.", variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -51,6 +71,14 @@ function OverviewTab() {
           Verified admin account
         </div>
       </Card>
+
+      <Card className="lg:col-span-3 flex flex-col gap-3">
+        <p className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>Site branding</p>
+        <LogoUpload value={logo} onChange={setLogo} label="" hint="Shown in the sidebar, browser tab and login screen." />
+        <Button size="sm" className="self-start" onClick={handleSaveLogo} loading={saving}>
+          Save logo
+        </Button>
+      </Card>
     </div>
   );
 }
@@ -76,6 +104,7 @@ function SecurityTab() {
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   return (
     <div>
@@ -93,7 +122,7 @@ export default function ProfilePage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={logout}
+            onClick={() => setLogoutOpen(true)}
             style={{ background: "rgba(255,255,255,0.15)", color: "#ffffff" }}
             className="hover:bg-white/25"
           >
@@ -122,6 +151,33 @@ export default function ProfilePage() {
           { key: "security", label: "Security", content: <SecurityTab /> },
         ]}
       />
+
+      <Modal
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        title="Log out"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setLogoutOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setLogoutOpen(false);
+                logout();
+              }}
+            >
+              Log out
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+          Are you sure you want to log out? You&apos;ll need to sign in again to access the admin panel.
+        </p>
+      </Modal>
     </div>
   );
 }

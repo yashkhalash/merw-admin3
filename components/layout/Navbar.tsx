@@ -7,8 +7,9 @@ import { Search, Sun, Moon, Bell, Settings, Menu, LogOut, User as UserIcon } fro
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import Avatar from "../ui/Avatar";
-import Badge from "../ui/Badge";
 import IconButton from "../ui/IconButton";
+import Modal from "../ui/Modal";
+import Button from "../ui/Button";
 
 const MOCK_RESULTS = [
   "Order #48213",
@@ -45,6 +46,7 @@ export default function Navbar({ onMobileMenu }: { onMobileMenu: () => void }) {
   const [query, setQuery] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const searchRef = useOutsideClick(() => setSearchOpen(false));
   const notifRef = useOutsideClick(() => setNotifOpen(false));
@@ -68,11 +70,7 @@ export default function Navbar({ onMobileMenu }: { onMobileMenu: () => void }) {
   return (
     <header
       className="sticky top-0 z-20 flex h-16 items-center gap-3 px-4 md:px-6 shadow-sm transition-all duration-200"
-      style={{
-        background: "var(--color-surface)",
-        marginLeft: "0",
-        left: "var(--sidebar-width)",
-      }}
+      style={{ background: "var(--color-surface)" }}
     >
       <button
         aria-label="Open menu"
@@ -152,8 +150,11 @@ export default function Navbar({ onMobileMenu }: { onMobileMenu: () => void }) {
               <span className="relative inline-flex">
                 <Bell size={18} />
                 {MOCK_NOTIFICATIONS.length > 0 && (
-                  <span className="absolute -top-1 -right-1">
-                    <Badge variant="danger">{MOCK_NOTIFICATIONS.length}</Badge>
+                  <span
+                    className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-4 px-0.5 rounded-full text-[10px] font-semibold leading-none text-white"
+                    style={{ background: "#dc2626", border: "1.5px solid var(--color-surface)" }}
+                  >
+                    {MOCK_NOTIFICATIONS.length > 9 ? "9+" : MOCK_NOTIFICATIONS.length}
                   </span>
                 )}
               </span>
@@ -222,7 +223,7 @@ export default function Navbar({ onMobileMenu }: { onMobileMenu: () => void }) {
               <button
                 onClick={() => {
                   setProfileOpen(false);
-                  logout();
+                  setLogoutOpen(true);
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-red-600 hover:bg-black/5"
               >
@@ -233,6 +234,33 @@ export default function Navbar({ onMobileMenu }: { onMobileMenu: () => void }) {
         </div>
 
       </div>
+
+      <Modal
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        title="Log out"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setLogoutOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setLogoutOpen(false);
+                logout();
+              }}
+            >
+              Log out
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+          Are you sure you want to log out? You&apos;ll need to sign in again to access the admin panel.
+        </p>
+      </Modal>
     </header>
   );
 }

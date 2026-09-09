@@ -29,23 +29,30 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     setCollapsed(defaultCollapsed);
   }, [defaultCollapsed]);
 
-  useEffect(() => {
-    const width = collapsed ? "72px" : "272px";
-    document.documentElement.style.setProperty("--sidebar-width", width);
-  }, [collapsed]);
-
   // While collapsed with "expand on hover" enabled, hovering the sidebar peeks it
-  // open as a flyout without affecting the fixed layout width (the aside is
-  // position:fixed, so widening it overlays content instead of pushing it).
+  // open. The peeked width is pushed into --sidebar-width too, so every page's
+  // content reflows to stay fully visible instead of being covered by the flyout.
   const peeking = collapsed && hoverExpand && hovering;
   const effectiveCollapsed = collapsed && !peeking;
+
+  useEffect(() => {
+    const width = effectiveCollapsed ? "72px" : "272px";
+    document.documentElement.style.setProperty("--sidebar-width", width);
+  }, [effectiveCollapsed]);
 
   const renderContent = (isCollapsed: boolean, isDesktop: boolean) => (
     <div
       className="flex h-full flex-col shadow-[1px_0_3px_rgba(0,0,0,0.04)]"
       style={{ background: "var(--color-surface)" }}
     >
-      <div className="flex items-center justify-between px-4 py-4">
+      <div
+        className={cn(
+          "flex px-4 py-4",
+          // Collapsed = only 72px wide (40px after padding) — logo + toggle button
+          // can't share one row without overlapping/squishing, so stack them instead.
+          isCollapsed ? "flex-col items-center gap-2" : "items-center justify-between"
+        )}
+      >
         <Logo collapsed={isCollapsed} />
         {isDesktop && (
           <Tooltip content={isCollapsed ? "Expand sidebar" : "Collapse sidebar"} side="right">

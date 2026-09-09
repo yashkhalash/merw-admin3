@@ -8,11 +8,13 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
+import { useSiteConfig } from "@/providers/SiteConfigProvider";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const { toast } = useToast();
+  const { siteName } = useSiteConfig();
 
   const [email, setEmail] = useState("admin@merw.com");
   const [password, setPassword] = useState("");
@@ -38,7 +40,7 @@ export default function LoginPage() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <h1 className="text-lg font-semibold">Sign in to MERW Admin</h1>
+        <h1 className="text-lg font-semibold">Sign in to {siteName}</h1>
         <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
           Manage your marketplace from one place.
         </p>

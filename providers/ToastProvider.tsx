@@ -1,9 +1,18 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { CheckCircle2, AlertTriangle, Info, XCircle, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type ToastVariant = "success" | "error" | "info" | "warning";
+
+export type ToastPosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
 
 export interface ToastItem {
   id: string;
@@ -14,9 +23,23 @@ export interface ToastItem {
 
 interface ToastContextValue {
   toast: (t: Omit<ToastItem, "id">) => void;
+  position: ToastPosition;
+  setPosition: (p: ToastPosition) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+
+const POSITION_KEY = "merw_toast_position";
+const DEFAULT_POSITION: ToastPosition = "bottom-right";
+
+const positionClasses: Record<ToastPosition, string> = {
+  "top-left": "top-4 left-4 items-start",
+  "top-center": "top-4 left-1/2 -translate-x-1/2 items-center",
+  "top-right": "top-4 right-4 items-end",
+  "bottom-left": "bottom-4 left-4 items-start",
+  "bottom-center": "bottom-4 left-1/2 -translate-x-1/2 items-center",
+  "bottom-right": "bottom-4 right-4 items-end",
+};
 
 const variantIcon: Record<ToastVariant, React.ElementType> = {
   success: CheckCircle2,
@@ -34,6 +57,21 @@ const variantColor: Record<ToastVariant, string> = {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
+  const [position, setPositionState] = useState<ToastPosition>(DEFAULT_POSITION);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(POSITION_KEY) as ToastPosition | null;
+      if (stored && positionClasses[stored]) setPositionState(stored);
+    } catch {}
+  }, []);
+
+  const setPosition = useCallback((p: ToastPosition) => {
+    setPositionState(p);
+    try {
+      localStorage.setItem(POSITION_KEY, p);
+    } catch {}
+  }, []);
 
   const remove = useCallback((id: string) => {
     setItems((prev) => prev.filter((t) => t.id !== id));
@@ -49,16 +87,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={{ toast, position, setPosition }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-80 max-w-[90vw]">
+      <div
+        className={cn(
+          "fixed z-[100] flex flex-col gap-2 w-80 max-w-[90vw]",
+          positionClasses[position]
+        )}
+      >
         {items.map((item) => {
           const Icon = variantIcon[item.variant];
           return (
             <div
               key={item.id}
               role="alert"
-              className="animate-fade-in flex items-start gap-3 rounded-lg border p-3 shadow-lg"
+              className="animate-fade-in flex items-start gap-3 rounded-lg border p-3 shadow-lg w-full"
               style={{
                 background: "var(--color-surface)",
                 borderColor: "var(--color-border)",

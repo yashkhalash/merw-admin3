@@ -11,16 +11,56 @@ import Toggle from "@/components/ui/Toggle";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useLoaderPreference } from "@/providers/LoaderPreferenceProvider";
 import { useSidebarPreference } from "@/providers/SidebarPreferenceProvider";
+import { useToast, ToastPosition } from "@/providers/ToastProvider";
+import { useSiteConfig } from "@/providers/SiteConfigProvider";
 import { API_BASE_URL, DEFAULT_API_VERSION, DEFAULT_ROLE } from "@/lib/apiConfig";
 import { LoaderStyle } from "@/types";
 import { RawSkeleton, Spinner, ProgressBar, Dots } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/utils";
+import LogoUpload from "@/components/ui/LogoUpload";
 
 function GeneralTab() {
+  const { siteName, supportEmail, logoUrl, updateSiteConfig, loading } = useSiteConfig();
+  const { toast } = useToast();
+
+  const [name, setName] = useState(siteName);
+  const [email, setEmail] = useState(supportEmail);
+  const [logo, setLogo] = useState<string | null>(logoUrl);
+  const [saving, setSaving] = useState(false);
+  const [synced, setSynced] = useState(false);
+
+  // Seed the form from the fetched config exactly once it arrives — after that,
+  // the fields are fully user-controlled and shouldn't be clobbered by refetches.
+  if (!synced && !loading) {
+    setSynced(true);
+    setName(siteName);
+    setEmail(supportEmail);
+    setLogo(logoUrl);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await updateSiteConfig({ siteName: name, supportEmail: email, logoUrl: logo });
+      toast({ title: "Settings saved", description: "Site settings updated successfully.", variant: "success" });
+    } catch {
+      toast({ title: "Save failed", description: "Couldn't update site settings. Please try again.", variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Card className="max-w-lg flex flex-col gap-4">
-      <Input label="Site name" defaultValue="MERW Marketplace" />
-      <Input label="Support email" defaultValue="support@merw.com" />
-      <Button className="self-start" size="sm">Save changes</Button>
+      <LogoUpload value={logo} onChange={setLogo} />
+      <Input label="Site name" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input label="Support email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+        The site name and logo appear in the sidebar, browser tab, login screen and profile.
+      </p>
+      <Button className="self-start" size="sm" onClick={handleSave} loading={saving}>
+        Save changes
+      </Button>
     </Card>
   );
 }
@@ -57,8 +97,8 @@ function AppearanceTab() {
             Palette
           </p>
           <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-            {palettes.length} available — current: <span className="font-medium">{palette.name}</span>. Each
-            card previews both its light and dark theme colors.
+            {palettes.length} available — current: <span className="font-medium">{palette.name}</span>. One
+            palette applies to both light and dark mode; each card previews both color sets.
           </p>
         </div>
 
@@ -207,6 +247,83 @@ function SidebarTab() {
   );
 }
 
+const TOAST_POSITIONS: { key: ToastPosition; label: string }[] = [
+  { key: "top-left", label: "Top Left" },
+  { key: "top-center", label: "Top Center" },
+  { key: "top-right", label: "Top Right" },
+  { key: "bottom-left", label: "Bottom Left" },
+  { key: "bottom-center", label: "Bottom Center" },
+  { key: "bottom-right", label: "Bottom Right" },
+];
+
+const dotAlignClasses: Record<ToastPosition, string> = {
+  "top-left": "items-start justify-start",
+  "top-center": "items-start justify-center",
+  "top-right": "items-start justify-end",
+  "bottom-left": "items-end justify-start",
+  "bottom-center": "items-end justify-center",
+  "bottom-right": "items-end justify-end",
+};
+
+function ToastTab() {
+  const { position, setPosition, toast } = useToast();
+
+  return (
+    <Card className="max-w-lg flex flex-col gap-4">
+      <div>
+        <p className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
+          Notification position
+        </p>
+        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+          Choose where toast notifications appear on screen.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {TOAST_POSITIONS.map((opt) => {
+          const active = position === opt.key;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setPosition(opt.key)}
+              aria-pressed={active}
+              className="flex flex-col items-center gap-2 rounded-lg p-3 transition-colors duration-150"
+              style={{
+                border: active ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                background: "var(--color-background)",
+              }}
+            >
+              <div
+                className={cn("flex h-14 w-full rounded-md p-1.5", dotAlignClasses[opt.key])}
+                style={{ border: "1px dashed var(--color-border)" }}
+              >
+                <span
+                  className="h-2.5 w-6 rounded-full"
+                  style={{ background: active ? "var(--color-primary)" : "var(--color-text-muted)" }}
+                />
+              </div>
+              <span className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>
+                {opt.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="self-start"
+        onClick={() =>
+          toast({ title: "Preview", description: "This is how your toasts will look.", variant: "info" })
+        }
+      >
+        Send test notification
+      </Button>
+    </Card>
+  );
+}
+
 function ApiConfigTab() {
   return (
     <Card className="max-w-lg flex flex-col gap-4">
@@ -287,6 +404,7 @@ export default function SettingsPage() {
           { key: "general", label: "General", content: <GeneralTab /> },
           { key: "appearance", label: "Appearance", content: <AppearanceTab /> },
           { key: "sidebar", label: "Sidebar", content: <SidebarTab /> },
+          { key: "toasts", label: "Toasts", content: <ToastTab /> },
           { key: "api", label: "API Configuration", content: <ApiConfigTab /> },
           { key: "loader", label: "Loader", content: <LoaderTab /> },
         ]}
