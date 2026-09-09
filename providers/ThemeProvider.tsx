@@ -9,16 +9,34 @@ interface ThemeContextValue {
   mode: Mode;
   toggleMode: () => void;
   setMode: (m: Mode) => void;
-  paletteId: string;
+
+  // Light and dark themes each pick their own palette independently — switching
+  // the light/dark toggle no longer forces the same palette's two color sets.
+  lightPaletteId: string;
+  darkPaletteId: string;
+  lightPalette: Palette;
+  darkPalette: Palette;
+  setLightPaletteId: (id: string) => void;
+  setDarkPaletteId: (id: string) => void;
+
+  /** The palette backing whichever mode is currently active. */
   palette: Palette;
-  setPaletteId: (id: string) => void;
+  /** The id of `palette` above — kept for callers that only care about "current" palette. */
+  paletteId: string;
+
   palettes: Palette[];
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const PALETTE_KEY = "merw_palette_id";
+const LIGHT_PALETTE_KEY = "merw_light_palette_id";
+const DARK_PALETTE_KEY = "merw_dark_palette_id";
+const LEGACY_PALETTE_KEY = "merw_palette_id";
 const MODE_KEY = "merw_theme_mode";
+
+function resolvePalette(id: string | null | undefined, fallback: Palette): Palette {
+  return (id && palettes.find((p) => p.id === id)) || fallback;
+}
 
 function applyPalette(palette: Palette, mode: Mode) {
   const tokens = mode === "dark" ? palette.dark : palette.light;
@@ -45,29 +63,34 @@ function applyPalette(palette: Palette, mode: Mode) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<Mode>("light");
-  const [paletteId, setPaletteIdState] = useState<string>("default");
+  const [lightPaletteId, setLightPaletteIdState] = useState<string>("default");
+  const [darkPaletteId, setDarkPaletteIdState] = useState<string>("default");
 
   useEffect(() => {
     try {
       const storedMode = localStorage.getItem(MODE_KEY) as Mode | null;
-      const storedPalette = localStorage.getItem(PALETTE_KEY);
+      // Fall back to the old single-palette key so existing users keep their choice
+      // as their starting point for both light and dark instead of resetting to default.
+      const legacy = localStorage.getItem(LEGACY_PALETTE_KEY);
+      const storedLight = localStorage.getItem(LIGHT_PALETTE_KEY) || legacy;
+      const storedDark = localStorage.getItem(DARK_PALETTE_KEY) || legacy;
       const initialMode =
         storedMode ||
         (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-      const initialPalette = storedPalette || "default";
+      const initialLight = resolvePalette(storedLight, palettes[0]);
+      const initialDark = resolvePalette(storedDark, palettes[0]);
       setModeState(initialMode);
-      setPaletteIdState(initialPalette);
-      const palette = palettes.find((p) => p.id === initialPalette) || palettes[0];
-      applyPalette(palette, initialMode);
+      setLightPaletteIdState(initialLight.id);
+      setDarkPaletteIdState(initialDark.id);
+      applyPalette(initialMode === "dark" ? initialDark : initialLight, initialMode);
     } catch {
       applyPalette(palettes[0], "light");
     }
   }, []);
 
-  const palette = useMemo(
-    () => palettes.find((p) => p.id === paletteId) || palettes[0],
-    [paletteId]
-  );
+  const lightPalette = useMemo(() => resolvePalette(lightPaletteId, palettes[0]), [lightPaletteId]);
+  const darkPalette = useMemo(() => resolvePalette(darkPaletteId, palettes[0]), [darkPaletteId]);
+  const activePalette = mode === "dark" ? darkPalette : lightPalette;
 
   const setMode = useCallback(
     (m: Mode) => {
@@ -75,23 +98,37 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem(MODE_KEY, m);
       } catch {}
-      applyPalette(palette, m);
+      applyPalette(m === "dark" ? darkPalette : lightPalette, m);
     },
-    [palette]
+    [lightPalette, darkPalette]
   );
 
   const toggleMode = useCallback(() => {
     setMode(mode === "light" ? "dark" : "light");
   }, [mode, setMode]);
 
-  const setPaletteId = useCallback(
+  const setLightPaletteId = useCallback(
     (id: string) => {
-      setPaletteIdState(id);
+      setLightPaletteIdState(id);
       try {
-        localStorage.setItem(PALETTE_KEY, id);
+        localStorage.setItem(LIGHT_PALETTE_KEY, id);
       } catch {}
-      const p = palettes.find((pp) => pp.id === id) || palettes[0];
-      applyPalette(p, mode);
+      if (mode === "light") {
+        applyPalette(resolvePalette(id, palettes[0]), "light");
+      }
+    },
+    [mode]
+  );
+
+  const setDarkPaletteId = useCallback(
+    (id: string) => {
+      setDarkPaletteIdState(id);
+      try {
+        localStorage.setItem(DARK_PALETTE_KEY, id);
+      } catch {}
+      if (mode === "dark") {
+        applyPalette(resolvePalette(id, palettes[0]), "dark");
+      }
     },
     [mode]
   );
@@ -100,9 +137,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     mode,
     toggleMode,
     setMode,
-    paletteId,
-    palette,
-    setPaletteId,
+    lightPaletteId,
+    darkPaletteId,
+    lightPalette,
+    darkPalette,
+    setLightPaletteId,
+    setDarkPaletteId,
+    palette: activePalette,
+    paletteId: activePalette.id,
     palettes,
   };
 
