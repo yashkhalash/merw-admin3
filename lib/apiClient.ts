@@ -24,10 +24,14 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getToken();
+  config.headers = config.headers ?? {};
   if (token) {
-    config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Bypasses ngrok's free-tier HTML "you're about to visit..." interstitial, which
+  // otherwise intercepts requests before they reach the tunneled backend — harmless
+  // no-op against any non-ngrok host, so it's safe to always send.
+  config.headers["ngrok-skip-browser-warning"] = "true";
   return config;
 });
 
