@@ -20,7 +20,7 @@ credentials seeded in the backend: `admin@merw.com` / `Admin@123`.
 
 ```
 PORT=3002
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+API_BASE_URL=http://localhost:4000
 ```
 
 `PORT` is informational; the dev/start scripts pin the port explicitly via
@@ -36,7 +36,7 @@ Instead:
   `role` (default `"admin"`), persisted to `localStorage` so they can be
   changed at runtime (see Settings → API Configuration).
 - `lib/apiClient.ts` exposes a `request(resourcePath, config)` helper that
-  builds the full URL as `${NEXT_PUBLIC_API_BASE_URL}/${version}/${role}/${resourcePath}`,
+  builds the full URL as `${API_BASE_URL}/${version}/${role}/${resourcePath}`,
   attaches the JWT bearer token from `localStorage` via an axios request
   interceptor, and redirects to `/login` on a `401` response.
 - Per-domain service modules (`services/auth.ts`, `services/dashboard.ts`)

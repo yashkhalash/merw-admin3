@@ -1,9 +1,9 @@
 // Central source of truth for the dynamic, versioned + role-scoped API base.
-// URLs are always built as ${NEXT_PUBLIC_API_BASE_URL}/${version}/${role}/<resource>.
+// URLs are always built as ${API_BASE_URL}/${version}/${role}/<resource>.
 // Never hardcode "/api/v1/" anywhere else in the app.
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+  process.env.API_BASE_URL || "http://localhost:4000";
 
 export const DEFAULT_API_VERSION = "v1";
 export const DEFAULT_ROLE = "admin";
