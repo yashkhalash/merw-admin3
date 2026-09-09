@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2MB — keeps the base64 payload comfortably under the API body limit.
 
@@ -11,6 +12,9 @@ export interface LogoUploadProps {
   size?: number;
   label?: string;
   hint?: string;
+  /** "square" for a logo tile (default), "circle" for a personal avatar. */
+  shape?: "square" | "circle";
+  uploadLabel?: string;
 }
 
 export default function LogoUpload({
@@ -19,6 +23,8 @@ export default function LogoUpload({
   size = 64,
   label = "Site logo",
   hint = "PNG, JPG or SVG, up to 2MB.",
+  shape = "square",
+  uploadLabel = "Upload logo",
 }: LogoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +55,10 @@ export default function LogoUpload({
       )}
       <div className="flex items-center gap-3">
         <div
-          className="flex items-center justify-center rounded-xl overflow-hidden shrink-0"
+          className={cn(
+            "flex items-center justify-center overflow-hidden shrink-0",
+            shape === "circle" ? "rounded-full" : "rounded-xl"
+          )}
           style={{
             width: size,
             height: size,
@@ -73,7 +82,7 @@ export default function LogoUpload({
               className="text-xs font-medium rounded-md px-3 py-1.5 transition-colors duration-150 hover:bg-black/5"
               style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
             >
-              Upload logo
+              {uploadLabel}
             </button>
             {value && (
               <button

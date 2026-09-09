@@ -193,7 +193,7 @@ export default function Navbar({ onMobileMenu }: { onMobileMenu: () => void }) {
         {/* Profile */}
         <div className="relative" ref={profileRef}>
           <button onClick={() => setProfileOpen((o) => !o)} aria-label="Open profile menu">
-            <Avatar name={user?.name || "Admin User"} size={32} />
+            <Avatar name={user?.name || "Admin User"} src={user?.avatarUrl} size={32} />
           </button>
           {profileOpen && (
             <div

@@ -137,12 +137,12 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         {isCollapsed ? (
           <Tooltip content={user?.name || "Admin User"} side="right">
             <div className="flex items-center justify-center">
-              <Avatar name={user?.name || "Admin User"} size={36} />
+              <Avatar name={user?.name || "Admin User"} src={user?.avatarUrl} size={36} />
             </div>
           </Tooltip>
         ) : (
           <div className="flex items-center gap-2.5">
-            <Avatar name={user?.name || "Admin User"} size={36} />
+            <Avatar name={user?.name || "Admin User"} src={user?.avatarUrl} size={36} />
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{user?.name || "Admin User"}</p>
               <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>

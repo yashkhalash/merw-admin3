@@ -30,3 +30,13 @@ export async function resetPassword(token: string, newPassword: string) {
 export async function getMe() {
   return request<ApiEnvelope<AuthUser>>("auth/me", { method: "get" });
 }
+
+export interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  avatarUrl?: string | null;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload) {
+  return request<ApiEnvelope<AuthUser>>("auth/me", { method: "put", data: payload });
+}

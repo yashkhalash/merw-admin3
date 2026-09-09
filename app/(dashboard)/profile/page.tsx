@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, ShieldCheck, KeyRound, LogOut, BadgeCheck } from "lucide-react";
+import { Mail, ShieldCheck, KeyRound, LogOut, BadgeCheck, Pencil } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Avatar from "@/components/ui/Avatar";
@@ -10,12 +10,85 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Tabs from "@/components/ui/Tabs";
 import Modal from "@/components/ui/Modal";
+import Input from "@/components/ui/Input";
 import LogoUpload from "@/components/ui/LogoUpload";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useSiteConfig } from "@/providers/SiteConfigProvider";
+import * as authService from "@/services/auth";
+import { cn } from "@/lib/utils";
 
-function OverviewTab() {
+function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user, refreshUser } = useAuth();
+  const { toast } = useToast();
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl ?? null);
+  const [saving, setSaving] = useState(false);
+
+  // Re-seed the form from the latest user whenever the modal is (re)opened.
+  const [openedWith, setOpenedWith] = useState(false);
+  if (open && !openedWith) {
+    setOpenedWith(true);
+    setName(user?.name || "");
+    setEmail(user?.email || "");
+    setAvatarUrl(user?.avatarUrl ?? null);
+  } else if (!open && openedWith) {
+    setOpenedWith(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await authService.updateProfile({ name, email, avatarUrl });
+      await refreshUser();
+      toast({ title: "Profile updated", description: "Your profile has been updated.", variant: "success" });
+      onClose();
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Couldn't update your profile. Please try again.";
+      toast({ title: "Update failed", description: message, variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Edit profile"
+      size="sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            Save changes
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <LogoUpload
+          value={avatarUrl}
+          onChange={setAvatarUrl}
+          shape="circle"
+          size={72}
+          label=""
+          uploadLabel="Upload photo"
+          hint="PNG or JPG, up to 2MB."
+        />
+        <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+    </Modal>
+  );
+}
+
+function OverviewTab({ onEditProfile }: { onEditProfile: () => void }) {
   const { user } = useAuth();
   const { logoUrl, updateSiteConfig } = useSiteConfig();
   const { toast } = useToast();
@@ -23,9 +96,9 @@ function OverviewTab() {
   const [saving, setSaving] = useState(false);
 
   const infoRows = [
-    { label: "Full name", value: user?.name || "Admin User" },
-    { label: "Email address", value: user?.email || "admin@merw.com" },
-    { label: "Role", value: user?.role || "admin" },
+    { label: "Full name", value: user?.name || "Admin User", capitalize: false },
+    { label: "Email address", value: user?.email || "admin@merw.com", capitalize: false },
+    { label: "Role", value: user?.role || "admin", capitalize: true },
   ];
 
   async function handleSaveLogo() {
@@ -43,9 +116,14 @@ function OverviewTab() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <Card className="lg:col-span-2 flex flex-col gap-1">
-        <p className="text-sm font-semibold mb-2" style={{ color: "var(--color-foreground)" }}>
-          Account details
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
+            Account details
+          </p>
+          <Button variant="outline" size="sm" leftIcon={<Pencil size={13} />} onClick={onEditProfile}>
+            Edit profile
+          </Button>
+        </div>
         {infoRows.map((row, i) => (
           <div
             key={row.label}
@@ -53,7 +131,10 @@ function OverviewTab() {
             style={{ borderTop: i === 0 ? "none" : "1px solid var(--color-border)" }}
           >
             <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>{row.label}</span>
-            <span className="text-sm font-medium capitalize" style={{ color: "var(--color-foreground)" }}>
+            <span
+              className={cn("text-sm font-medium", row.capitalize && "capitalize")}
+              style={{ color: "var(--color-foreground)" }}
+            >
               {row.value}
             </span>
           </div>
@@ -105,6 +186,7 @@ function SecurityTab() {
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <div>
@@ -130,15 +212,27 @@ export default function ProfilePage() {
           </Button>
         </div>
 
-        <div className="absolute -bottom-10 left-6 flex items-end gap-4">
-          <div style={{ boxShadow: "0 0 0 4px var(--color-surface)", borderRadius: "9999px" }}>
-            <Avatar name={user?.name || "Admin User"} size={84} />
+        <div className="absolute -bottom-14 left-6 flex items-center gap-4">
+          <div className="relative" style={{ boxShadow: "0 0 0 4px var(--color-surface)", borderRadius: "9999px" }}>
+            <Avatar name={user?.name || "Admin User"} src={user?.avatarUrl} size={84} />
+            <button
+              aria-label="Edit profile photo"
+              onClick={() => setEditOpen(true)}
+              className="absolute bottom-0 right-0 flex items-center justify-center h-7 w-7 rounded-full transition-transform duration-150 hover:scale-105"
+              style={{
+                background: "var(--color-primary)",
+                color: "var(--color-surface)",
+                border: "2px solid var(--color-surface)",
+              }}
+            >
+              <Pencil size={12} />
+            </button>
           </div>
-          <div className="pb-2">
+          <div className="mt-4">
             <p className="text-base font-semibold" style={{ color: "var(--color-foreground)" }}>
               {user?.name || "Admin User"}
             </p>
-            <p className="text-xs flex items-center gap-1" style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-xs flex items-center gap-1 mt-1" style={{ color: "var(--color-text-muted)" }}>
               <Mail size={12} /> {user?.email || "admin@merw.com"}
             </p>
           </div>
@@ -147,10 +241,12 @@ export default function ProfilePage() {
 
       <Tabs
         tabs={[
-          { key: "overview", label: "Overview", content: <OverviewTab /> },
+          { key: "overview", label: "Overview", content: <OverviewTab onEditProfile={() => setEditOpen(true)} /> },
           { key: "security", label: "Security", content: <SecurityTab /> },
         ]}
       />
+
+      <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} />
 
       <Modal
         open={logoutOpen}
